@@ -130,26 +130,26 @@ services:
       discovery.type: single-node
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"
   # CONFING, in order to not load quickstatements then remove this entire section
-  quickstatements:
-    image: wikibase/quickstatements:latest
-    ports:
-     - "9191:80"
-    depends_on:
-     - wikibase
-    volumes:
-     - quickstatements-data:/quickstatements/data
-    networks:
-      default:
-        aliases:
-         - quickstatements.svc
-    environment:
-      - QS_PUBLIC_SCHEME_HOST_AND_PORT=http://localhost:9191
-      - WB_PUBLIC_SCHEME_HOST_AND_PORT=http://localhost:8181
-      - WIKIBASE_SCHEME_AND_HOST=http://wikibase.svc
-      - WB_PROPERTY_NAMESPACE=122
-      - "WB_PROPERTY_PREFIX=Property:"
-      - WB_ITEM_NAMESPACE=120
-      - "WB_ITEM_PREFIX=Item:"
+  # quickstatements:
+  #   image: wikibase/quickstatements:latest
+  #   ports:
+  #    - "9191:80"
+  #   depends_on:
+  #    - wikibase
+  #   volumes:
+  #    - quickstatements-data:/quickstatements/data
+  #   networks:
+  #     default:
+  #       aliases:
+  #        - quickstatements.svc
+  #   environment:
+  #     - QS_PUBLIC_SCHEME_HOST_AND_PORT=http://localhost:9191
+  #     - WB_PUBLIC_SCHEME_HOST_AND_PORT=http://localhost:8181
+  #     - WIKIBASE_SCHEME_AND_HOST=http://wikibase.svc
+  #     - WB_PROPERTY_NAMESPACE=122
+  #     - "WB_PROPERTY_PREFIX=Property:"
+  #     - WB_ITEM_NAMESPACE=120
+  #     - "WB_ITEM_PREFIX=Item:"
 
 volumes:
   mediawiki-mysql-data:

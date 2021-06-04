@@ -1,1 +1,15 @@
 .idea
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+#jupyter
+.ipynb_checkpoints/
+
+# pyenv
+.python-version
+
+# dotenv
+.env
