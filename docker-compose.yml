@@ -60,6 +60,8 @@ services:
       default:
         aliases:
          - mysql.svc
+    ports:
+     - "3306:3306"
   wdqs-frontend:
     image: wikibase/wdqs-frontend:latest
     restart: unless-stopped
