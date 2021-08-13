@@ -127,6 +127,7 @@ def get_wb_statements(login_instance:wbi_login.Login, Q:str, P:str, Pq:str = 'P0
     
 def get_items_instance_of(P, Q):
     '''
+    Вернуть список всех item_id, которых есть свойство P со значением item = Q
     P - property "instance of"
     Q - parent item
     '''
@@ -150,18 +151,29 @@ def get_items_instance_of(P, Q):
         df['item'] = df['item'].str.replace('http://wikibase.svc/entity/', '')
     
     return df
-    
-  
-    
+        
     
 def gen_prop_dict(properties_list):
+    '''
+    Возвращает словарь {item_label: item_id} по списку property_label
+    '''
     return {i['label']: i['item'] \
         for _, i in get_items_by_label(properties_list, item_type = 'P').iterrows()}    
         
         
             
 class WikiObject():
+    '''
+    Родительский класс объектов Wikibase.
+    Ищет по Label, существует ли объект в Wikibase.
+    Собирает список ручных стейтментов, которые надо сохранить
+    '''
+    
     def _fetch_statements(self):
+        '''
+        Собирает resolved_fields - список всех ручных стейтментов, входных стейтментов, а так же детей, которые надо перенести при обновлении
+        TO DO: почти всех. В функции push_to_wiki добавляется ещё два стейтмента: in_company и located_in . Полагаю, надо перенести сюда.
+        '''
         self.resolved_fields = self.df_input.copy()
         self.resolved_fields['QUALIFIER'] = f'API update'
         
@@ -182,9 +194,12 @@ class WikiObject():
     
     
     def _set_vars(self):
-        Q_df = get_items_by_label([self.label], item_type = 'Q')
-        self.Q_parent = get_items_by_label([self.parent_label], item_type = 'Q').at[0, 'item'] 
-        self.wb_statements = pd.DataFrame(columns = ['STATEMENT_VALUE', 'QUALIFIER', 'STATEMENT_LABEL', 'STATEMENT_TYPE', 'ITEM_LABEL'])         
+        '''
+        Выставляет все аттрибуты. 
+        ''' 
+        Q_df = get_items_by_label([self.label], item_type = 'Q') # ID объекта
+        self.Q_parent = get_items_by_label([self.parent_label], item_type = 'Q').at[0, 'item']  # ID родителя. TO DO: если родительский объект не существует - будет ошибка. Надо обрабатывать более умно
+        self.wb_statements = pd.DataFrame(columns = ['STATEMENT_VALUE', 'QUALIFIER', 'STATEMENT_LABEL', 'STATEMENT_TYPE', 'ITEM_LABEL']) # Читаются сохранённые в WB стейтменты
         
         if self.repeated_statements:
             self.properties_dict['statements'][self.repeated_statements] = self.properties_dict[self.repeated_statements]['P'] 
@@ -192,16 +207,11 @@ class WikiObject():
         if Q_df is None:  
             # Новый объект
             logging.info(f'No such object: {self.label}! New one will be created.')
-            # assert self.df_input.shape[0] > 0 , 'Cannot create new item from empty input DataFrame!'
-            
             self.Q = None
-            self.new_item = True            
+            self.new_item = True
         else:
             # Существующий объект
             self.Q = Q_df.at[0, 'item']
-            # _, self.Q_parent = None, None #get_wb_parent(self.Q, self.properties_dict['P'], self.login_instance)
-            
-            
             # Забрать состояние стейтментов с объекта
             # TO DO: плохо то, что если есть стейтмент не из PROPERTY_DICT , то он не будет забран
             # Да и вообще как-то громоздко получилось, это наверняка можно сделать одним запросом
@@ -227,20 +237,7 @@ class WikiObject():
                 )
                 state_i['STATEMENT_LABEL'] = label
                 state_i['STATEMENT_TYPE'] = 'item'
-                self.wb_statements = self.wb_statements.append(state_i)
-                
-            # А это, кажется, и не надо больше фетчить
-#             if self.repeated_statements is not None:
-#                 wb_repeated_statements = get_wb_statements(
-#                     login_instance = self.login_instance, 
-#                     Q = self.Q, 
-#                     P = self.repeated_statements['P'],
-#                     Pq =  self.properties_dict['global_references']['Source']
-#                 )
-#                 wb_repeated_statements['STATEMENT_LABEL'] = self.repeated_statement_label 
-#                 wb_repeated_statements['STATEMENT_TYPE'] = 'item'
-#                 self.wb_statements = self.wb_statements.append(wb_repeated_statements)    
-                
+                self.wb_statements = self.wb_statements.append(state_i)                 
             self.new_item = False
             
         
@@ -256,6 +253,10 @@ class WikiObject():
         
         
     def push_to_wiki(self):
+        '''
+        Публикация нового или обновление имеющегося объекта
+        Если стейтмент (перечисленный в справочнике properties_dict) объекта не имеет в квалифаере подстроки "API update", то она будет считаться ручной информацией и будет сохранена
+        '''
         its = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         update_qualifier_API = wbi_core.String(f'API update {its}', prop_nr=self.properties_dict['global_references']['Source'], 
@@ -306,9 +307,17 @@ class WikiObject():
         
         
     def delete_from_wiki(self):
+        '''
+        Удаление объекта
+        Кстати, это можно сделать @staticmethod
+        '''
         wbi_core.ItemEngine.delete_item(self.Q, '', self.login_instance)
         
-        
+
+
+'''
+Объекты от компании до колонки.
+'''        
 class WikiCompany(WikiObject): 
     def __init__(
         self, 
